@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+pydantic
+httpx
+scrapy
+beautifulsoup4
+firecrawl-py
