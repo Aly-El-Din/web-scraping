@@ -10,7 +10,7 @@ class FireCrawlScraper:
     def __init__(self):
         pass
 
-    async def crawl_url(url) -> Document:
+    async def crawl_url(self, url) -> Document:
         path_parts = urlparse(url).path.split('/')
         base_path = '/'.join(path_parts[:3])
 
@@ -50,6 +50,7 @@ class FireCrawlScraper:
 
     def crawl(self, url:str) -> Document:
         """Wrapper func for crawling"""
+        print(f"urls: {url}")
         return asyncio.run(self.crawl_url(url))
 
 #asyncio.run(main('https://www.imf.org/en/Countries/EGY'))

@@ -5,12 +5,13 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.documents import Document
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 class PromptCrawlerProcessor():
     def __init__(self):
         self.splitter = RecursiveCharacterTextSplitter(chunk_size = 1000,
                                              chunk_overlap = 200)
-        self.llm = ChatOpenAI(model="gpt-4", temperature=0)
+        self.llm = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0)
         self.prompt_template = ChatPromptTemplate.from_template("""
         You are a helpful banking assistant. Use the following context to answer the 
         user's prompt:
