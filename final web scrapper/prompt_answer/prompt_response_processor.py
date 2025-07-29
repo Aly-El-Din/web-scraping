@@ -1,9 +1,8 @@
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough
 from langchain_core.documents import Document
 from langchain_google_genai import ChatGoogleGenerativeAI
 
@@ -24,7 +23,7 @@ class PromptCrawlerProcessor():
 
     def split_and_embed_documents(self, docs):
         chunks = self.splitter.split_documents(documents=docs)
-        embeddings = OpenAIEmbeddings()
+        embeddings = HuggingFaceBgeEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
         vector_db = FAISS.from_documents(chunks, embeddings)
         return vector_db.as_retriever(search_kwargs={"k":3})
 
