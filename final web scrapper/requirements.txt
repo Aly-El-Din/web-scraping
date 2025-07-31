@@ -5,3 +5,12 @@ httpx
 scrapy
 beautifulsoup4
 firecrawl-py
+langchain
+langchain-google-genai
+langchain-core
+faiss-cpu
+google-generativeai
+langchain-community
+sentence-transformers
+python-dotenv
+langchain_openai
