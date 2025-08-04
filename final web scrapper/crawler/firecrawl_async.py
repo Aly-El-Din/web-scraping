@@ -17,7 +17,7 @@ class FireCrawlAsyncScrapper():
         print("Starting crawl...")
         crawl_result = await app.async_crawl_url(
             url=url,
-            limit=10,
+            limit=8,
             scrape_options=ScrapeOptions(formats=['markdown'])
         )
         print("Crawl started.")
@@ -36,7 +36,7 @@ class FireCrawlAsyncScrapper():
                 break
             else:
                 print(f"Crawl status: {status_response.status}")
-                await asyncio.sleep(5)
+                await asyncio.sleep(20)
 
         # The data might be directly in the status response
         if hasattr(final_status, 'data') and final_status.data:
