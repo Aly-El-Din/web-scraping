@@ -17,7 +17,7 @@ class FireCrawlAsyncScrapper():
         print("Starting crawl...")
         crawl_result = await app.async_crawl_url(
             url=url,
-            limit=8,
+            limit=15,
             scrape_options=ScrapeOptions(formats=['markdown'])
         )
         print("Crawl started.")

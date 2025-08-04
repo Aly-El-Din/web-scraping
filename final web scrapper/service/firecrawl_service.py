@@ -10,17 +10,7 @@ import asyncio
 from dotenv import load_dotenv
 load_dotenv()
 
-
-def load_markdown_file_as_document(filename: str) -> List[Document]:
-    with open(filename, "r", encoding="utf-8") as f:
-        content = f.read()
-    
-    #from langchain_core.documents import Document
-    doc = Document(page_content=content, metadata={"source": filename})
-    return doc
-
-
-def answer_prompt(prompt: str) -> str:
+def answer_prompt(prompt: str, filename:str) -> str:
     link_extractor = LinkExtractor()
     scrapper = FireCrawlAsyncScrapper()
     processor = PromptCrawlerProcessor()
@@ -28,12 +18,10 @@ def answer_prompt(prompt: str) -> str:
     links = link_extractor.extract_urls_from_text(prompt)
     
     if links:
-        docs = []
         for link in links:
-            filename = "CIB_Crawled_Content_10.md"
             asyncio.run(scrapper.crawl_url(url=link, filename=filename))
             # docs.extend(load_markdown_file_as_document(filename))
-        processor.load_and_process(filename)
+        processor.load_and_process(file_path=filename)
         response = processor.ask_question(prompt)
         return response
     else:
@@ -44,7 +32,7 @@ def main():
     prompt = "https://www.cibeg.com/en/personal/cards tell me the travel privileges for the Platinum Mileseverywhere Credit Card card"
     #prompt = "https://www.saib.com.eg/en/personal/ what are the products of SAIB?"
     # prompt = "https://www.cibeg.com/en   https://www.saib.com.eg/en/personal/ Compare between products of CIB bank and SAIB bank"
-    result = answer_prompt(prompt)
+    result = answer_prompt(prompt, filename="CIB_Crawled_Content_15.md")
     print(result)
 
 if __name__ == '__main__':
