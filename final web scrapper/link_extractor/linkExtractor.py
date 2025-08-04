@@ -24,6 +24,8 @@ class LinkExtractor():
             try:
                 parsed = urlparse(raw_url)
                 if parsed.scheme and parsed.netloc:
+                    if raw_url.endswith('?'):
+                        raw_url = raw_url.rstrip('?')
                     cleaned.append(raw_url)
             except Exception:
                 continue
