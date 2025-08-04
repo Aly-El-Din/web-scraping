@@ -40,7 +40,7 @@ class FireCrawlAsyncScrapper():
 
         # The data might be directly in the status response
         if hasattr(final_status, 'data') and final_status.data:
-            with open(filename, "w", encoding="utf-8") as f:
+            with open(filename, "a", encoding="utf-8") as f:
                 for i, doc in enumerate(final_status.data, 1):
                     source_url = doc.metadata.get('sourceURL', 'Unknown') if hasattr(doc, 'metadata') else 'Unknown'
                     #content = doc.page_content if hasattr(doc, 'page_content') else str(doc).strip()

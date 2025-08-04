@@ -2,21 +2,17 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
-import multiprocessing
-import tempfile
-import json
-import os
 from typing import List, Dict
-import logging
 
-# Import your spider class
-from imf_spider import GenericScrapy
+from ..service.firecrawl_service import FirecrawlService
+
+import multiprocessing, tempfile, json, os, logging, uuid
+
 
 router = APIRouter()
 
 class ScrapeRequest(BaseModel):
-    url: str
-    max_items: int = 1000
+    prompt: str
 
 class ScrapeResponse(BaseModel):
     success: bool
@@ -80,9 +76,9 @@ def run_spider_in_process(start_url: str, max_items: int = 50):
         if os.path.exists(temp_filename):
             os.unlink(temp_filename)
 
-# Alternative approach using Manager for shared data
+"""# Alternative approach using Manager for shared data
 def run_spider_with_manager(start_url: str, max_items: int, shared_list):
-    """Run spider with shared list using multiprocessing Manager."""
+    Run spider with shared list using multiprocessing Manager.
     try:
         settings = get_project_settings()
         settings.set('LOG_LEVEL', 'INFO')
@@ -98,38 +94,29 @@ def run_spider_with_manager(start_url: str, max_items: int, shared_list):
         return True
     except Exception as e:
         print(f"Spider error: {e}")
-        return False
+        return False"""
 
 @router.post("/scrape", response_model=ScrapeResponse)
 def scrape(request: ScrapeRequest):
     """Scrape articles from the provided URL."""
-    if not request.url:
+    if not request.prompt:
         raise HTTPException(status_code=400, detail="URL is required")
     
-    if not request.url.startswith(('http://', 'https://')):
-        raise HTTPException(status_code=400, detail="URL must start with http:// or https://")
-    
-    print(f"Request received: {request.url}")
-    
     try:
-        # Method 1: Using temporary file (recommended)
-        with multiprocessing.Pool(1) as pool:
-            result = pool.apply(run_spider_in_process, (request.url, request.max_items))
+        service = FirecrawlService()
+
+        filename = request.filename or f"{uuid.uuid4().hex}.md"
+
+        response = service.answer_prompt(prompt=request.prompt, filename=filename)
         
-        if result['success']:
-            return ScrapeResponse(
-                success=True,
-                message=f"Successfully scraped {result['total_scraped']} items",
-                items_count=len(result['items']),
-                items=result['items']
-            )
-        else:
-            raise HTTPException(
-                status_code=500, 
-                detail=f"Scraping failed: {result.get('error', 'Unknown error')}"
-            )
-            
+        return ScrapeResponse(
+            success=True,
+            message="Scraping and processing completed",
+            items_count=1 if response else 0,
+            items=[response] if response else []
+        )
+    
     except Exception as e:
-        logging.error(f"Error during scraping: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+            logging.error(f"Error during scraping: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 

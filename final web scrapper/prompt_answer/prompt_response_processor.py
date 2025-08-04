@@ -45,13 +45,16 @@ class PromptCrawlerProcessor:
         
         Question: {question}
         
+
         Guidelines:
-        1. FIRST check for any relevant TABLES in the context - these contain the most structured data
-        2. For numerical/comparison questions, ALWAYS show data in table format if available
-        3. Be precise and factual
-        4. If information is missing, say "Not found in documents
-        5. Dont give me links as answer, search in the crawled data                                                         
-                                                                
+        1. Do NOT assume the document is from one source — it may contain multiple banks' content. Try to extract information per bank.
+        2. If the question is a comparison, identify relevant sections for each bank and extract product/service information separately.
+        3. If structured tables are not present, analyze descriptions and infer the differences — don't ignore content just because it’s not in table format.
+        4. Your answer should still be strictly based on the document, but you ARE allowed to synthesize and conclude facts if they can be reasonably inferred from the content.
+        5. Use comparison tables if possible, but only include rows supported by document context.
+        6. If one bank lacks details on a certain feature, say so clearly (e.g., "No travel benefits mentioned for SAIB").
+        7. Do NOT crawl or fetch content from external links or sources.
+        8. Never output any links; only use content from this document.
         """)
         
         self.vector_db = None
@@ -59,13 +62,14 @@ class PromptCrawlerProcessor:
     def load_and_process(self, file_path: str) -> None:
         """Load and process markdown file into searchable vectors"""
         try:
+            print(f"loading from filepath:{file_path}")
             # Read file content
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             
             # Create document
             doc = Document(page_content=content, metadata={"source": file_path})
-            
+            print("Document created...")
             # Split into chunks
             chunks = self.text_splitter.split_documents([doc])
             
@@ -83,6 +87,7 @@ class PromptCrawlerProcessor:
         if not self.vector_db:
             raise ValueError("No documents loaded - call load_and_process() first")
         
+        print("LLM is scanning your document...")
         # Configure the processing chain
         retriever = self.vector_db.as_retriever(search_kwargs={"k": 20})
         chain = (
