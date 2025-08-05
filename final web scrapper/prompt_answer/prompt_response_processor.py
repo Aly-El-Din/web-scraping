@@ -1,18 +1,15 @@
+import json
 import os
 import pickle
 from pathlib import Path
 from typing import List, Dict
 from dotenv import load_dotenv
-
-# LangChain imports
 from langchain_core.documents import Document
-from langchain_text_splitters import MarkdownTextSplitter
+from langchain_text_splitters import MarkdownTextSplitter, RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
-
-# Google Gemini imports
 import google.generativeai as genai
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 
@@ -23,9 +20,15 @@ class PromptCrawlerProcessor:
     def __init__(self):
         """Initialize the QA system with default settings"""
         # Configure text splitting
-        self.text_splitter = MarkdownTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=200
+        # self.text_splitter = MarkdownTextSplitter(
+        #     chunk_size=1000,
+        #     chunk_overlap=200
+        # )
+           # For JSON files (generic text splitting)
+        self.text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=800,
+            chunk_overlap=100,
+            separators=["\n\n", "\n", " ", ""]
         )
         
         # Initialize Gemini models
@@ -34,9 +37,9 @@ class PromptCrawlerProcessor:
             raise ValueError("GOOGLE_API_KEY not found in environment variables")
         
         self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-        self.llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.3)
+        self.llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3)
         
-        # Configure prompt template
+        # # Configure prompt template
         self.prompt_template = ChatPromptTemplate.from_template("""
         You are a helpful assistant analyzing banking documents.
         Answer the question using ONLY the following context:
@@ -47,10 +50,11 @@ class PromptCrawlerProcessor:
         
 
         Guidelines:
-        1. Do NOT assume the document is from one source — it may contain multiple banks' content. Try to extract information per bank.
-        2. If the question is a comparison, identify relevant sections for each bank and extract product/service information separately.
-        3. If structured tables are not present, analyze descriptions and infer the differences — don't ignore content just because it’s not in table format.
-        4. Your answer should still be strictly based on the document, but you ARE allowed to synthesize and conclude facts if they can be reasonably inferred from the content.
+        1. FIRST check for any relevant TABLES in the context - these contain the most structured data
+        2. Do NOT assume the document is from one source — it may contain multiple banks' content. Try to extract information per bank.
+        3. If the question is a comparison, identify relevant sections for each bank and extract product/service information separately.
+        4. If structured tables are not present, analyze descriptions and infer the differences — don't ignore content just because it’s not in table format.
+       
         5. Use comparison tables if possible, but only include rows supported by document context.
         6. If one bank lacks details on a certain feature, say so clearly (e.g., "No travel benefits mentioned for SAIB").
         7. Do NOT crawl or fetch content from external links or sources.
@@ -58,30 +62,55 @@ class PromptCrawlerProcessor:
         """)
         
         self.vector_db = None
-
+# # MD
+    # def load_and_process(self, file_path: str) -> None:
+    #     """Load and process markdown file into searchable vectors"""
+    #     try:
+    #         print(f"loading from filepath:{file_path}")
+    #         # Read file content
+    #         with open(file_path, 'r', encoding='utf-8') as f:
+    #             content = f.read()
+            
+    #         # Create document
+    #         doc = Document(page_content=content, metadata={"source": file_path})
+    #         print("Document created...")
+    #         # Split into chunks
+    #         chunks = self.text_splitter.split_documents([doc])
+            
+    #         # Create vector database
+    #         self.vector_db = FAISS.from_documents(
+    #             documents=chunks,
+    #             embedding=self.embeddings
+    #         )
+            
+    #     except Exception as e:
+    #         raise ValueError(f"Failed to process {file_path}: {str(e)}")
+# # JSON
     def load_and_process(self, file_path: str) -> None:
-        """Load and process markdown file into searchable vectors"""
+        """Load either JSON or Markdown files"""
         try:
-            print(f"loading from filepath:{file_path}")
-            # Read file content
             with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
+                if file_path.endswith('.json'):
+                    # Parse JSON
+                    data = json.load(f)
+                    docs = [
+                        Document(
+                            page_content=item.get("content", ""),
+                            metadata=item.get("metadata", {"source": file_path})
+                        )
+                        for item in data
+                    ]
+                else:
+                    # Original markdown handling
+                    content = f.read()
+                    docs = [Document(page_content=content, metadata={"source": file_path})]
             
-            # Create document
-            doc = Document(page_content=content, metadata={"source": file_path})
-            print("Document created...")
-            # Split into chunks
-            chunks = self.text_splitter.split_documents([doc])
-            
-            # Create vector database
-            self.vector_db = FAISS.from_documents(
-                documents=chunks,
-                embedding=self.embeddings
-            )
+            chunks = self.text_splitter.split_documents(docs)
+            self.vector_db = FAISS.from_documents(chunks, self.embeddings)
             
         except Exception as e:
             raise ValueError(f"Failed to process {file_path}: {str(e)}")
-
+        
     def ask_question(self, question: str) -> str:
         """Get answer to a question about the document"""
         if not self.vector_db:
@@ -89,7 +118,7 @@ class PromptCrawlerProcessor:
         
         print("LLM is scanning your document...")
         # Configure the processing chain
-        retriever = self.vector_db.as_retriever(search_kwargs={"k": 20})
+        retriever = self.vector_db.as_retriever(search_kwargs={"k": 25})
         chain = (
             {"context": retriever, "question": RunnablePassthrough()}
             | self.prompt_template
@@ -106,7 +135,7 @@ if __name__ == "__main__":
         processor = PromptCrawlerProcessor()
         
         # File to process (change this to your file path)
-        md_file = "CIB_Crawled_Content_10.md"
+        md_file = "output_20250805_152258.md"
         
         # Verify file exists
         if not Path(md_file).exists():

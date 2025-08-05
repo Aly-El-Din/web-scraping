@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List
 from unittest import TestLoader
 from langchain.schema import Document
@@ -26,18 +27,27 @@ class FirecrawlService():
                 asyncio.run(scrapper.crawl_url(url=link, filename=filename))
                 # docs.extend(load_markdown_file_as_document(filename))
             processor.load_and_process(file_path=filename)
-            response = processor.ask_question(prompt)
-            return response
+            while True:
+                question = input("\nAsk a question about the document (or 'quit'): ").strip()
+                if question.lower() in ('quit', 'exit'):
+                    break
+                
+                answer = processor.ask_question(question)
+                print("\nAnswer:", answer)
+            # response = processor.ask_question(prompt)
+            # return response
         else:
             return "No provided links in the prompt to scrap"
 
 
 def main():
-    #prompt = "https://www.cibeg.com/en/personal/cards tell me the travel privileges for the Platinum Mileseverywhere Credit Card card"
+    prompt = "https://www.cibeg.com/en/personal/cards tell me the travel privileges for the Platinum Mileseverywhere Credit Card "
     #prompt = "https://www.saib.com.eg/en/personal/ what are the products of SAIB?"
-    prompt = "https://www.cibeg.com/en/personal/cards?   https://www.saib.com.eg/en/personal/ Compare the credit card offerings of CIB and SAIB bank. Show differences in travel privileges and eligibility requirements."
+    # prompt = "https://www.cibeg.com/en/personal/cards?   https://www.saib.com.eg/en/personal/ Compare the credit card offerings of CIB and SAIB bank. Show differences in travel privileges and eligibility requirements."
     service = FirecrawlService()
-    result = service.answer_prompt(prompt, filename="CIB_Saib_Crawled_Content_15.md")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"output_{timestamp}.json"
+    result = service.answer_prompt(prompt, filename=filename)
     print(result)
 
 if __name__ == '__main__':
