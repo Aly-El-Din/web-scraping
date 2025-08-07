@@ -1,4 +1,5 @@
 import asyncio
+from urllib.parse import urlparse
 from firecrawl import AsyncFirecrawlApp, ScrapeOptions
 from dotenv import load_dotenv
 import os, time
@@ -14,18 +15,19 @@ class FireCrawlAsyncScrapper():
 
     async def crawl_url(self, url:str, filename:str):
         app = AsyncFirecrawlApp(api_key=os.getenv("FIRECRAWL_API_KEY"))
-
+        path_parts = urlparse(url).path.split('/')
+        base_path = '/'.join(path_parts[:3])
         print("Starting crawl...")
         crawl_result = await app.async_crawl_url(
             url=url,
-            limit=8,
+            limit=5,
+            # include_paths=[f"{base_path}*"],
             scrape_options=ScrapeOptions(
                 formats=['markdown'],
                 jsonOptions={
                         'prompt': 'Extract key information such as titles, descriptions, and main facts from the page'
                     }
                 )
-            # scrape_options=ScrapeOptions(formats=['markdown'])
         )
         print("Crawl started.")
         print(f"Crawl ID: {crawl_result.id}")
@@ -45,7 +47,7 @@ class FireCrawlAsyncScrapper():
                 print(f"Crawl status: {status_response.status}")
                 await asyncio.sleep(20)
 
-                # get results list from status or crawl_result
+        # get data
         docs = None
         if hasattr(final_status, "data"):
             docs = final_status.data
@@ -53,6 +55,7 @@ class FireCrawlAsyncScrapper():
             docs = final_status.get("data", [])
 
         output = []
+        # go through each page crawled, extract 
         for item in docs:
             if isinstance(item, dict):
                 md = item.get("markdown") or item.get("page_content", "")
@@ -71,25 +74,7 @@ class FireCrawlAsyncScrapper():
         with open(filename, "w", encoding="utf-8") as f:
             json.dump(output, f, ensure_ascii=False, indent=2)
         print(f"Saved {len(output)} pages to {filename}")    
-        # # # JSON
-        # # results = crawl_result.model_dump()
-        # if hasattr(final_status, 'data') and final_status.data:
-        # # Prepare structured data
-        #     results = []
-        #     for doc in final_status.data:
-        #         results.append({
-        #             "url": doc.metadata.get('sourceURL', 'Unknown'),
-        #             "content": getattr(doc, 'markdown', None) or getattr(doc, 'page_content', str(doc)),
-        #             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
-        #         })
-
-        #     # Write to JSON file
-        # try:
-        #         with open(filename, "w", encoding="utf-8") as f:
-        #             json.dump(results, f, indent=2, ensure_ascii=False)
-        #         print(f"Saved {len(results)} entries to {filename}")
-        # except IOError as e:
-        #         print(f"Failed to write JSON: {e}")
+     
 # MD
         # # The data might be directly in the status response
         # if hasattr(final_status, 'data') and final_status.data:
